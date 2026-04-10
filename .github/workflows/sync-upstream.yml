@@ -1,0 +1,37 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # daily at 6am UTC
+  workflow_dispatch:      # manual trigger anytime
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    name: Sync from NousResearch/hermes-agent
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/NousResearch/hermes-agent.git || true
+          git fetch upstream
+
+      - name: Merge upstream main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git merge upstream/main --no-edit --allow-unrelated-histories || echo "Nothing to merge or conflict detected"
+
+      - name: Push to fork
+        run: git push origin main
+
+      - name: Report status
+        if: failure()
+        run: echo "::warning::Upstream sync failed — manual merge may be required. Check for conflicts between upstream/main and fork/main."
